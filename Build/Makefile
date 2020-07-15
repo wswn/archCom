@@ -43,7 +43,7 @@ TOPMODULE ?= mkTestbench
 
 BSC_COMP_FLAGS = -elab -keep-fires -aggressive-conditions -no-warn-action-shadowing -show-range-conflict -D $(SIM)
 BSC_LINK_FLAGS = -keep-fires
-BSC_PATHS = -p $(DISTRO):%/Prelude:%/Libraries
+BSC_PATHS = -p $(DISTRO):%/Prelude:%/Libraries:$(DISTRO)/recycle-bsv-lib/build
 
 .PHONY: help
 help:

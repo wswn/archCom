@@ -105,7 +105,7 @@ function Bit#(n) multiplexerN(Bit#(1) sel, Bit#(n) a, Bit#(n) b);
     //return (sel == 0)? a : b;
 
     Bit#(n) out;
-    for(Integer i = 0; i < valueof(n); i = i + 1) begin
+    for(Integer i = 0; i < valueOf(n); i = i + 1) begin
         out[i] = multiplexer1(sel, a[i], b[i]);
     end
     return out;

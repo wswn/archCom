@@ -14,14 +14,20 @@ import SimBench :: *;
 module mkTestbench (Empty);
 
 `ifdef SIM_MUX
-    // Uncomment the lines below to check the correctness of all Multiplexers
+    // Uncomment the lines below to check the correctness of all Multiplexer
     SimBench_IFC sim <- mkSimMux; 
 `elsif SIM_ADDER
-    // Uncomment the lines below to check the correctness of all Adders
+    // Uncomment the lines below to check the correctness of all Adder
     SimBench_IFC sim <- mkSimAdder; 
 `elsif SIM_SHIFTER
-    // Uncomment the lines below to check the correctness of all Adders
+    // Uncomment the lines below to check the correctness of all Shifter
     SimBench_IFC sim <- mkSimShifter; 
+`elsif SIM_FIFO
+    // Uncomment the lines below to check the correctness of all Fifo
+    SimBench_IFC sim <- mkSimFifo; 
+`elsif SIM_Fft
+    // Uncomment the lines below to check the correctness of all Fifo
+    SimBench_IFC sim <- mkSimFft; 
 `else
     SimBench_IFC sim <- mkSimMux;
     // Report Error
@@ -36,7 +42,7 @@ module mkTestbench (Empty);
 
     rule mtb_finish ;
         let x <- sim.finish; 
-        $display("Test suit finish: return %d",x);
+        $display("\nTest suit finish: return %d",x);
         $finish;
     endrule
 endmodule
