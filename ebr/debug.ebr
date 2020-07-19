@@ -1,0 +1,3 @@
+#! /bin/bash
+cd Build
+make all_bsim SIM=SIM_Mul
