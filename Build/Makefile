@@ -103,7 +103,7 @@ link:
 .PHONY: simulate
 simulate:
 	@echo Bluesim simulation ...
-	./$(BSIM_EXE)  -V
+	./$(BSIM_EXE)  -V | tee ./$(SIM).log
 	@echo Bluesim simulation finished
 
 # ----------------------------------------------------------------

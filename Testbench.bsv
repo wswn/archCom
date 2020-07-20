@@ -28,6 +28,9 @@ module mkTestbench (Empty);
 `elsif SIM_Fft
     // Uncomment the lines below to check the correctness of all Fifo
     SimBench_IFC sim <- mkSimFft; 
+`elsif SIM_Mul
+    // Uncomment the lines below to check the correctness of all Fifo
+    SimBench_IFC sim <- mkSimMul; 
 `else
     SimBench_IFC sim <- mkSimMux;
     // Report Error

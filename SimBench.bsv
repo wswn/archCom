@@ -25,8 +25,9 @@ import Multiplexer :: * ;
 import Adder :: * ;
 import Shifter :: * ;
 import Fifo :: * ;
-import LFSR::* ;
-import Fft:: * ;
+import LFSR :: * ;
+import Fft :: * ;
+import Multipliers:: * ;
 import FixedPoint :: * ;
 import Real :: * ;
 import Complex :: * ;
@@ -38,30 +39,7 @@ import Vector :: * ;
 `define DISP_CGREEN $write("\033[0;32m") 
 `define DISP_CRESET $write("\033[0;39m") 
 
-`define NONE               "\033[0m"
-`define BLACK              "\033[0;30m"
-`define L_BLACK            "\033[1;30m"
-`define RED                "\033[0;31m"
-`define L_RED              "\033[1;31m"
-`define GREEN              "\033[0;32m"
-`define L_GREEN            "\033[1;32m"
-`define BROWN              "\033[0;33m"
-`define YELLOW             "\033[1;33m"
-`define BLUE               "\033[0;34m"
-`define L_BLUE             "\033[1;34m"
-`define PURPLE             "\033[0;35m"
-`define L_PURPLE           "\033[1;35m"
-`define CYAN               "\033[0;36m"
-`define L_CYAN             "\033[1;36m"
-`define GRAY               "\033[0;37m"
-`define WHITE              "\033[1;37m"
-
-`define BOLD               "\033[1m"
-`define UNDERLINE          "\033[4m"
-`define BLINK              "\033[5m"
-`define REVERSE            "\033[7m"
-`define HIDE               "\033[8m"
-`define CLEAR              "\033[2J"
+`include <ConsoleColor.bsv>
 
 // ================================================================
 // Interface definition
@@ -481,6 +459,52 @@ module mkSimFft (SimBench_IFC);
         $write("\t fft: pout=%d.", pout);
 
         if (cnt < 16)
+            rg_cnt <= rg_cnt+1;
+        else
+            rg_state <= FINISH;
+    endrule
+
+    method Action start if(rg_state == IDLE);
+        rg_state <= PROCESS;
+    endmethod
+
+    method ActionValue#(int) finish if(rg_state==FINISH);
+        rg_state <= IDLE;
+        rg_cnt <= 0;
+        return 42;
+    endmethod
+endmodule
+
+/**
+ * Module
+ * \brief  Module to check the correctness of the Multipliers
+ * \ifc    SimBench_IFC	
+ * \author Hu Junying
+ * \mail   Junying.hu@csu.edu.cn
+ * \time   2020-07-16 15:55:46
+ */
+(* synthesize *)
+module mkSimMul (SimBench_IFC);
+    
+    // register for this module's state
+    Reg#(State_MTB) rg_state <- mkReg(IDLE);
+    
+    // registers for clock counter
+    Reg#( Int#(32) ) rg_cnt <- mkReg (0);
+    let cnt = rg_cnt;
+ 
+    // common register
+
+    // BenchMark
+    // function Bit#(16) test_function( Bit#(8) a, Bit#(8) b ) = multiply_unsigned( a, b );
+    // Empty tb <- mkTbMulFunction(mul32, multiply_unsigned, True);
+
+    Multiplier#(16) dut <- mkFoldedMultiplier();
+    Empty tb <- mkTbMulModule(dut, multiply_signed, True);
+
+    rule mtb_process (rg_state == PROCESS);
+
+        if (cnt < 512)
             rg_cnt <= rg_cnt+1;
         else
             rg_state <= FINISH;
