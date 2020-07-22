@@ -21,6 +21,7 @@ package Fft;
 
 // ================================================================
 // Modules Importation
+import SimBench :: * ;
 import Vector :: * ;
 import Complex :: * ;
 import FixedPoint :: * ;
@@ -325,26 +326,81 @@ function Bit#(n) permute ( Bit#(n) stage, Bit#(n) index, Bool isLastStage );
 endfunction
 
 // ================================================================
-// Interface definition
-//interface Bfly4;
-// interface Bfly4;
-//     method Vector#(4, Complex#(s)) mbfly4(Vector#(4,Complex#(s)) t, Vector#(4,Complex#(s)) x);
-// endinterface
-
-//interface Fft;
-// interface Fft;
-//     method Action enq(Vector#(`FftPoints, Complex#(s)) in);
-//     method ActionValue#(Vector#(`FftPoints, Complex#(s))) deq();
-// endinterface
-
-// ================================================================
 // Module definition
-// module mkBfly4(Bfly4);
-//     method Vector#(4, Complex#(s)) mbfly4(Vector#(4,Complex#(s)) t, Vector#(4,Complex#(s)) x);
-//         // Method body
-//         return bfly4(t, x);
-//     endmethod
-// endmodule
+/**
+ * Module
+ * \brief  Module to check the correctness of the Fft 
+ * \ifc    SimBench_IFC	
+ * \author Hu Junying
+ * \mail   Junying.hu@csu.edu.cn
+ * \time   2020-07-10 15:55:46
+ */
+(* synthesize *)
+module mkSimFft (SimBench_IFC);
+    
+    // register for this module's state
+    Reg#(State_MTB) rg_state <- mkReg(IDLE);
+    
+    // registers for clock counter
+    Reg#( Bit#(7) ) rg_cnt <- mkReg (0);
+    let cnt = rg_cnt;
+
+    // common register
+    Reg#( Bit#(7) ) pout <- mkReg (0);
+    Reg#( Bit#(7) ) stage <- mkReg (1);
+    Reg#( Bool ) isLastStage <- mkReg (False);
+
+    rule mtb_process (rg_state == PROCESS);
+        $write("\ncnt: %2d",cnt);
+        
+        // $write("\t", fshow(x), " ", fshow(y), " ", fshow(x+y)); 
+        // fxptWrite(6, x); $write(" ");
+        // fxptWrite(6, y);$write(" ");
+        // fxptWrite(6, x+y);$write(" ");
+        
+        // let cgw = getWn(cnt);
+        // $write("\t"); fxptWrite(3, cgw.rel); $write(","); fxptWrite(3, cgw.img);
+
+        // let cgw = getTwiddle(stage, cnt);
+        // $write("\t"); fxptWrite(3, cgw[0].rel); $write(","); fxptWrite(3, cgw[0].img);
+        // $write("\t"); fxptWrite(3, cgw[1].rel); $write(","); fxptWrite(3, cgw[1].img);
+        // $write("\t"); fxptWrite(3, cgw[2].rel); $write(","); fxptWrite(3, cgw[2].img);
+        // $write("\t"); fxptWrite(3, cgw[3].rel); $write(","); fxptWrite(3, cgw[3].img);
+
+        let dwd = genWave();
+        let fn = fftcomb(dwd);
+        $write("\t"); fxptWrite(3, fn[0].rel); $write(","); fxptWrite(3, fn[0].img);
+        $write("\t"); fxptWrite(3, fn[1].rel); $write(","); fxptWrite(3, fn[1].img);
+        $write("\t"); fxptWrite(3, fn[2].rel); $write(","); fxptWrite(3, fn[2].img);
+        $write("\t"); fxptWrite(3, fn[3].rel); $write(","); fxptWrite(3, fn[3].img);
+        $write("\t"); fxptWrite(3, fn[4].rel); $write(","); fxptWrite(3, fn[4].img);
+        $write("\t"); fxptWrite(3, fn[5].rel); $write(","); fxptWrite(3, fn[5].img);
+        $write("\t"); fxptWrite(3, fn[6].rel); $write(","); fxptWrite(3, fn[6].img);
+        $write("\t"); fxptWrite(3, fn[7].rel); $write(","); fxptWrite(3, fn[7].img);
+
+        // let dr = digitReversed(cnt);
+        // $write("\t %d - %d", cnt, dr);
+
+        // pout <= permute(stage, cnt, isLastStage);
+        // process for multiplexer1
+        $write("\t fft: pout=%d.", pout);
+
+        if (cnt < 16)
+            rg_cnt <= rg_cnt+1;
+        else
+            rg_state <= FINISH;
+    endrule
+
+    method Action start if(rg_state == IDLE);
+        rg_state <= PROCESS;
+    endmethod
+
+    method ActionValue#(int) finish if(rg_state==FINISH);
+        rg_state <= IDLE;
+        rg_cnt <= 0;
+        return 42;
+    endmethod
+endmodule
 
 endpackage
 

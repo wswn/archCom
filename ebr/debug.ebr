@@ -1,3 +1,11 @@
 #! /bin/bash
 cd Build
-make all_bsim SIM=SIM_Mul
+# make all_bsim SIM=SIM_MUX
+# make all_bsim SIM=SIM_ADDER
+# make all_bsim SIM=SIM_SHIFTER
+# make all_bsim SIM=SIM_FIFO
+# make all_bsim SIM=SIM_FFT
+# make all_bsim SIM=SIM_MUL
+
+
+

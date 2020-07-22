@@ -21,7 +21,13 @@ package Adder;
 
 // ================================================================
 // Modules Importation
+import SimBench :: *;
+import LFSR :: * ;
 import Multiplexer :: *;
+
+// ================================================================
+// Macro definition
+`include <ConsoleColor.bsv>
 
 // ================================================================
 // Function definition
@@ -126,5 +132,152 @@ function Bit#(9) add8(Bit#(8) a, Bit#(8) b, Bit#(1) c_in);
    let s74 = multiplexerN(s30[4], s740, s741);
    return {s74, s30[3:0]};
 endfunction
+
+// ================================================================
+// Module definition
+/**
+ * Module
+ * \brief  Module to check the correctness of the adders
+ * \ifc    SimBench_IFC	
+ * \author Hu Junying
+ * \mail   Junying.hu@csu.edu.cn
+ * \time   2020-06-14 15:59:24
+ */
+(* synthesize *)
+module mkSimAdder (SimBench_IFC);
+    
+    // register for this module's state
+    Reg #(State_MTB) rg_state <- mkReg(IDLE);
+    
+    // registers for clock counter
+    Reg #(Bit #(5)) rg_cnt <- mkReg (0);
+    let cnt = rg_cnt[4:0];
+
+    // LFSR for random numbers.
+    LFSR#(Bit#(4)) lfsr_a4 <- mkFeedLFSR( 4'h9 );
+    LFSR#(Bit#(4)) lfsr_b4 <- mkLFSR_4; // default feed is 4'h9
+    LFSR#(Bit#(8)) lfsr_a8 <- mkLFSR_8; // default feed is 8'h8E
+    LFSR#(Bit#(8)) lfsr_b8 <- mkLFSR_8; // default feed is 8'h8E
+
+    // common register
+    Reg #(Bit #(1)) rg_a  <- mkReg (0);
+    Reg #(Bit #(1)) rg_b  <- mkReg (1);
+    Reg #(Bit #(4)) rg_a4 <- mkReg (0);
+    Reg #(Bit #(4)) rg_b4 <- mkReg (0);
+    Reg #(Bit #(8)) rg_a8 <- mkReg (0);
+    Reg #(Bit #(8)) rg_b8 <- mkReg (0);
+
+    Reg #(Bit #(4)) rg_a4p <- mkReg (0);
+    Reg #(Bit #(4)) rg_b4p <- mkReg (0);
+    Reg #(Bit #(8)) rg_a8p <- mkReg (0);
+    Reg #(Bit #(8)) rg_b8p <- mkReg (0);
+
+    // registers for Full Adder
+    Reg #(Bit #(1)) rg_cin   <- mkReg (0);
+    Reg #(Bit #(4)) rg_cin4p <- mkReg (0);
+    Reg #(Bit #(8)) rg_cin8p <- mkReg (0);
+    Reg #(Bit #(2)) rg_fa    <- mkReg (0);
+    Reg #(Bit #(5)) rg_fa5   <- mkReg (0); 
+    Reg #(Bit #(9)) rg_fa9   <- mkReg (0); 
+    
+    rule mtb_process (rg_state == PROCESS);
+        $write("cnt: %2d",cnt);
+        
+        // process for One-bit Full Adder
+        rg_cin <= rg_cnt[0];
+        rg_cin4p[0] <= rg_cin;
+        rg_cin8p[0] <= rg_cin;
+        rg_fa  <= fa(rg_a, rg_b, rg_cin);
+        $write("\t full adder: a=%d, b=%d, c_in=%d, c_out=%d, s=%d.", rg_a, rg_b, rg_cin, rg_fa[1], rg_fa[0]);
+
+        // process for add4         
+        rg_a4 <= lfsr_a4.value;
+        rg_b4 <= lfsr_b4.value;
+        rg_a4p <= rg_a4;
+        rg_b4p <= rg_b4;
+
+        rg_fa5 <= add4(rg_a4, rg_b4, rg_cin);
+        if( rg_a4p + rg_b4p + rg_cin4p == rg_fa5[3:0] ) begin
+            if( rg_fa5[3:0] < rg_a4p ) begin
+                if(rg_fa5[4] == 1'b1 ) begin
+                    `DISP_CGREEN;
+                    $write("\t add4: a=%4b, b=%4b, c_in=%d, c_out=%d, s=%4b. √", rg_a4, rg_b4, rg_cin, rg_fa5[4], rg_fa5[3:0]);
+                    `DISP_CRESET;
+                end
+                else begin
+                    `DISP_CRED;
+                    $write("\t add4: a=%4b, b=%4b, c_in=%d, c_out=%d, s=%4b. ×", rg_a4, rg_b4, rg_cin, rg_fa5[4], rg_fa5[3:0]);
+                    `DISP_CRESET;
+                end
+            end
+            else begin
+                `DISP_CGREEN;
+                $write("\t add4: a=%4b, b=%4b, c_in=%d, c_out=%d, s=%4b. √", rg_a4, rg_b4, rg_cin, rg_fa5[4], rg_fa5[3:0]);
+                `DISP_CRESET;
+            end
+        end
+        else begin
+            `DISP_CRED;
+            $write("\t add4: a=%4b, b=%4b, c_in=%d, c_out=%d, s=%4b. ×", rg_a4, rg_b4, rg_cin, rg_fa5[4], rg_fa5[3:0]);
+            `DISP_CRESET;
+        end
+        
+        // process for add8 
+        rg_a8 <= lfsr_a8.value;
+        rg_b8 <= lfsr_b8.value;
+        rg_a8p <= rg_a8;
+        rg_b8p <= rg_b8;
+
+        rg_fa9 <= addN(rg_a8, rg_b8, rg_cin);
+        if( rg_a8p + rg_b8p + rg_cin8p == rg_fa9[7:0] ) begin
+            if( rg_fa9[7:0] < rg_a8p ) begin
+                if(rg_fa9[8] == 1'b1 ) begin
+                    `DISP_CGREEN;
+                    $display("\t add8: a=%8b, b=%8b, c_in=%d, c_out=%d, s=%8b. √", rg_a8, rg_b8, rg_cin, rg_fa9[8], rg_fa9[7:0]);
+                    `DISP_CRESET;
+                end
+                else begin
+                    `DISP_CRED;
+                    $display("\t add8: a=%8b, b=%8b, c_in=%d, c_out=%d, s=%8b. ×", rg_a8, rg_b8, rg_cin, rg_fa9[8], rg_fa9[7:0]);
+                    `DISP_CRESET;
+                end
+            end
+            else begin
+                `DISP_CGREEN;
+                $display("\t add8: a=%8b, b=%8b, c_in=%d, c_out=%d, s=%8b. √", rg_a8, rg_b8, rg_cin, rg_fa9[8], rg_fa9[7:0]);
+                `DISP_CRESET;
+            end
+        end
+        else begin
+            `DISP_CRED;
+            $display("\t add8: a=%8b, b=%8b, c_in=%d, c_out=%d, s=%8b. ×", rg_a8, rg_b8, rg_cin, rg_fa9[8], rg_fa9[7:0]);
+            `DISP_CRESET;
+        end
+
+        if (cnt < 20) begin
+            rg_cnt <= rg_cnt+1;
+            lfsr_a4.next;
+            lfsr_b4.next;
+            lfsr_a8.next;
+            lfsr_b8.next;
+        end
+        else
+            rg_state <= FINISH;
+    endrule
+
+    method Action start if(rg_state == IDLE);
+        rg_state <= PROCESS;
+        lfsr_a4.seed(4'b0011);
+        lfsr_b4.seed(4'b0101);
+        lfsr_a8.seed(8'b0011);
+        lfsr_b8.seed(8'b0101);
+    endmethod
+
+    method ActionValue#(int) finish if(rg_state==FINISH);
+        rg_state <= IDLE;
+        rg_cnt <= 0;
+        return 42;
+    endmethod
+endmodule
 
 endpackage

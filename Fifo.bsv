@@ -20,8 +20,14 @@ package Fifo;
 
 // ================================================================
 // Modules Importation
-import Ehr :: *;
-import Vector :: *;
+import SimBench :: * ;
+import Ehr :: * ;
+import LFSR :: * ;
+import Vector :: * ;
+
+// ================================================================
+// Macro definition
+`include <ConsoleColor.bsv>
 
 // ================================================================
 // Interface definition
@@ -32,9 +38,6 @@ interface Fifo#(numeric type n, type t);
     method Action enq(t x);
     method Action deq;
     method t first;
-endinterface
-
-interface SimBench_IFC;
 endinterface
 
 // ================================================================
@@ -209,6 +212,70 @@ module mkCFFifo(Fifo#(n, t)) provisos (Bits#(t, sa));
     endmethod
     method t first if (v[0][0]);
         return d[0][0]; 
+    endmethod
+endmodule
+
+/**
+ * Module
+ * \brief  Module to check the correctness of the Fifo.
+ * \ifc    SimBench_IFC	
+ * \author Hu Junying
+ * \mail   Junying.hu@csu.edu.cn
+ * \time   2020-06-14 15:59:24
+ */
+(* synthesize *)
+module mkSimFifo (SimBench_IFC);
+    
+    // register for this module's state
+    Reg #(State_MTB) rg_state <- mkReg(IDLE);
+    
+    // registers for clock counter
+    Reg #(Bit #(5)) rg_cnt <- mkReg (0);
+    let cnt = rg_cnt[4:0];
+
+    // LFSR for random numbers.
+    LFSR#(Bit#(32)) lfsr_a32 <- mkLFSR_32; 
+
+    // common register
+    Fifo#(5, Bit#(32)) fifo <- mkCFFifo;
+
+    rule mtb_process (rg_state == PROCESS);
+        if(cnt[0] == 0)
+            $write("\n%scnt: %2d", `GREEN, cnt);
+        else
+            $write("\n%scnt: %2d", `BLUE, cnt);
+        if (cnt < 25) begin
+            rg_cnt <= rg_cnt+1;
+        end
+        else
+            rg_state <= FINISH;
+    endrule
+
+    rule mtb_process_enq (rg_state == PROCESS && cnt < 20 && cnt > 0);
+        // process for three-elements Fifo
+        let x = lfsr_a32.value;
+        fifo.enq(x);
+        lfsr_a32.next;
+        $write("\tenq: %d", x);
+    endrule
+
+    rule mtb_process_deq (rg_state == PROCESS && cnt < 23 && cnt > 0);
+        // process for three-elements Fifo
+        let y = fifo.first;
+        fifo.deq;
+        $write("\t\t\tdeq: %d", y);
+    endrule
+
+    method Action start if(rg_state == IDLE);
+        rg_state <= PROCESS;
+        lfsr_a32.seed(32'b0011);
+    endmethod
+
+    method ActionValue#(int) finish if(rg_state==FINISH);
+        $write("\n%scnt: %2d",`NONE,cnt);
+        rg_state <= IDLE;
+        rg_cnt <= 0;
+        return 42;
     endmethod
 endmodule
 

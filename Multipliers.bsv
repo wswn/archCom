@@ -21,6 +21,7 @@ package Multipliers;
 
 // ================================================================
 // Modules Importation
+import SimBench :: * ;
 import LFSR :: * ;
 import Adder :: * ;
 
@@ -97,6 +98,12 @@ function Bit#(TAdd#(n,n)) multiply_signed( Bit#(n) a, Bit#(n) b );
     return pack( product_int );
 endfunction
 
+function Bit#(n) arithShiftR1(Bit#(n) x);
+    Int#(n) xintn = unpack(x);
+    Int#(n) yintn = xintn >> 1; 
+    return pack(yintn);
+endfunction
+
 // ================================================================
 // Interface definition
 //interface Multiplier;
@@ -143,12 +150,6 @@ endinterface
 //     endmethod
 // 
 // endmodule
-
-function Bit#(n) arithShiftR1(Bit#(n) x);
-    Int#(n) xintn = unpack(x);
-    Int#(n) yintn = xintn >> 1; 
-    return pack(yintn);
-endfunction
 
 // function Bit#(n) compInv(Bit#(n) x) 
 //     // n >= 1;
@@ -321,6 +322,7 @@ module mkTbMulModule#(  Multiplier#(n) testModule,
     endrule
 
 endmodule
+
 /**
  * Module
  * \brief  BenchMark Module Implement. 
@@ -384,5 +386,51 @@ endmodule
 //     Empty tb <- mkTbMulModule(dut, multiply_signed, True);
 //     return tb;
 // endmodule
+
+/**
+ * Module
+ * \brief  Module to check the correctness of the Multipliers
+ * \ifc    SimBench_IFC	
+ * \author Hu Junying
+ * \mail   Junying.hu@csu.edu.cn
+ * \time   2020-07-16 15:55:46
+ */
+(* synthesize *)
+module mkSimMul (SimBench_IFC);
+    
+    // register for this module's state
+    Reg#(State_MTB) rg_state <- mkReg(IDLE);
+    
+    // registers for clock counter
+    Reg#( Int#(32) ) rg_cnt <- mkReg (0);
+    let cnt = rg_cnt;
+ 
+    // common register
+
+    // BenchMark
+    // function Bit#(16) test_function( Bit#(8) a, Bit#(8) b ) = multiply_unsigned( a, b );
+    // Empty tb <- mkTbMulFunction(mul32, multiply_unsigned, True);
+
+    Multiplier#(16) dut <- mkFoldedMultiplier();
+    Empty tb <- mkTbMulModule(dut, multiply_signed, True);
+
+    rule mtb_process (rg_state == PROCESS);
+
+        if (cnt < 512)
+            rg_cnt <= rg_cnt+1;
+        else
+            rg_state <= FINISH;
+    endrule
+
+    method Action start if(rg_state == IDLE);
+        rg_state <= PROCESS;
+    endmethod
+
+    method ActionValue#(int) finish if(rg_state==FINISH);
+        rg_state <= IDLE;
+        rg_cnt <= 0;
+        return 42;
+    endmethod
+endmodule
 
 endpackage 

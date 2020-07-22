@@ -21,7 +21,13 @@ package Shifter;
 
 // ================================================================
 // Modules Importation
-import Multiplexer :: *;
+import SimBench :: * ;
+import LFSR :: * ;
+import Multiplexer :: * ;
+
+// ================================================================
+// Macro definition
+`include <ConsoleColor.bsv>
 
 // ================================================================
 // Function definition
@@ -70,5 +76,80 @@ function Bit#(32) shiftR16(Bit#(32) in, Bit#(1) sel);
     let out = multiplexerN(sel, in, {16'h0,in[31:16]});
     return out;
 endfunction
+
+// ================================================================
+// Module definition
+/**
+ * Module
+ * \brief  Module to check the correctness of the Shifters
+ * \ifc    SimBench_IFC	
+ * \author Hu Junying
+ * \mail   Junying.hu@csu.edu.cn
+ * \time   2020-06-14 15:59:24
+ */
+(* synthesize *)
+module mkSimShifter (SimBench_IFC);
+    
+    // register for this module's state
+    Reg #(State_MTB) rg_state <- mkReg(IDLE);
+    
+    // registers for clock counter
+    Reg #(Bit #(5)) rg_cnt <- mkReg (0);
+    let cnt = rg_cnt[4:0];
+
+    // LFSR for random numbers.
+    LFSR#(Bit#(32)) lfsr_a32 <- mkLFSR_32; 
+
+    // common register
+    Reg #(Bit #(32)) rg_a32  <- mkReg (0);
+    Reg #(Bit #(32)) rg_a32p <- mkReg (0);
+
+    // registers for Shifter
+    Reg #(Bit #(5))  rg_sb5   <- mkReg (0);
+    Reg #(Bit #(5))  rg_sb5p  <- mkReg (0);
+    Reg #(Bit #(32)) rg_sf32  <- mkReg (0); 
+    
+    rule mtb_process (rg_state == PROCESS);
+        $write("cnt: %2d",cnt);
+        
+        // process for One-bit Full Adder
+        rg_sb5 <= rg_cnt;
+        rg_sb5p <= rg_sb5;
+
+        rg_a32 <= lfsr_a32.value;
+        rg_a32p <= rg_a32;
+
+        rg_sf32 <= barrelShiftRight32(rg_a32, rg_sb5);
+        if( rg_a32p>>rg_sb5p == rg_sf32 ) begin
+            `DISP_CGREEN;
+            $display("\t add4: in=%32b, shiftBy=%2d, out=%32b. √", rg_a32, rg_sb5, rg_sf32);
+            `DISP_CRESET;
+        end
+        else begin
+            `DISP_CRED;
+            $display("\t add4: in=%32b, shiftBy=%2d, out=%32b. ×", rg_a32, rg_sb5, rg_sf32);
+            `DISP_CRESET;
+        end
+
+        if (cnt < 20) begin
+            rg_cnt <= rg_cnt+1;
+            lfsr_a32.next;
+        end
+        else
+            rg_state <= FINISH;
+    endrule
+
+    method Action start if(rg_state == IDLE);
+        rg_state <= PROCESS;
+        lfsr_a32.seed(32'b0011);
+    endmethod
+
+    method ActionValue#(int) finish if(rg_state==FINISH);
+        rg_state <= IDLE;
+        rg_cnt <= 0;
+        return 42;
+    endmethod
+endmodule
+
 
 endpackage

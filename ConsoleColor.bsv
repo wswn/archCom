@@ -1,3 +1,8 @@
+
+`define DISP_CRED   $write("\033[0;31m") 
+`define DISP_CGREEN $write("\033[0;32m") 
+`define DISP_CRESET $write("\033[0;39m") 
+
 `define NONE               "\033[0m"
 `define BLACK              "\033[0;30m"
 `define L_BLACK            "\033[1;30m"

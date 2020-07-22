@@ -5,6 +5,22 @@ package Testbench;
 // Project imports
 import SimBench :: *;
 
+`ifdef SIM_MUX
+    import Multiplexer :: * ;
+`elsif SIM_ADDER
+    import Adder :: * ;
+`elsif SIM_SHIFTER
+    import Shifter :: * ;
+`elsif SIM_FIFO
+    import Fifo :: * ;
+`elsif SIM_FFT
+    import Fft :: * ;
+`elsif SIM_MUL
+    import Multipliers :: * ;
+`else
+    import Multiplexer :: * ;
+`endif
+
 // ================================================================
 // Macro definition
 
@@ -14,22 +30,16 @@ import SimBench :: *;
 module mkTestbench (Empty);
 
 `ifdef SIM_MUX
-    // Uncomment the lines below to check the correctness of all Multiplexer
     SimBench_IFC sim <- mkSimMux; 
 `elsif SIM_ADDER
-    // Uncomment the lines below to check the correctness of all Adder
     SimBench_IFC sim <- mkSimAdder; 
 `elsif SIM_SHIFTER
-    // Uncomment the lines below to check the correctness of all Shifter
     SimBench_IFC sim <- mkSimShifter; 
 `elsif SIM_FIFO
-    // Uncomment the lines below to check the correctness of all Fifo
     SimBench_IFC sim <- mkSimFifo; 
-`elsif SIM_Fft
-    // Uncomment the lines below to check the correctness of all Fifo
+`elsif SIM_FFT
     SimBench_IFC sim <- mkSimFft; 
-`elsif SIM_Mul
-    // Uncomment the lines below to check the correctness of all Fifo
+`elsif SIM_MUL
     SimBench_IFC sim <- mkSimMul; 
 `else
     SimBench_IFC sim <- mkSimMux;

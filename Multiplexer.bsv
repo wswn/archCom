@@ -20,6 +20,10 @@
 package Multiplexer;
 
 // ================================================================
+// Project imports
+import SimBench :: *;
+
+// ================================================================
 // Function definition
 
 /**
@@ -133,5 +137,68 @@ function Bit#(5) multiplexer5(Bit#(1) sel, Bit#(5) a, Bit#(5) b);
     // Use polymorphism constructor
     return multiplexerN(sel, a, b);
 endfunction
+
+// ================================================================
+// Module definition
+/**
+ * Module
+ * \brief  Module to check the correctness of the multiplexers 
+ * \ifc    SimBench_IFC	
+ * \author Hu Junying
+ * \mail   Junying.hu@csu.edu.cn
+ * \time   2020-06-14 15:55:46
+ */
+(* synthesize *)
+module mkSimMux (SimBench_IFC);
+    
+    // register for this module's state
+    Reg #(State_MTB) rg_state <- mkReg(IDLE);
+    
+    // registers for clock counter
+    Reg #(Bit #(3)) rg_cnt <- mkReg (0);
+    let cnt = rg_cnt[2:0];
+
+    // common register
+    Reg #(Bit #(1)) rg_a <- mkReg (0);
+    Reg #(Bit #(1)) rg_b <- mkReg (1);
+    Reg #(Bit #(1)) rg_sel <- mkReg (0);
+
+    Reg #(Bit #(5)) rg_a5 <- mkReg (5'b1_0101);
+    Reg #(Bit #(5)) rg_b5 <- mkReg (5'b0_1010);
+
+    // registers for multiplexer1
+    Reg #(Bit #(1)) rg_mux <- mkReg (0);
+
+    // registers for multiplexer5
+    Reg #(Bit #(5)) rg_mux5 <- mkReg (0);
+
+    rule mtb_process (rg_state == PROCESS);
+        $write("cnt: %2d",cnt);
+        
+        // process for multiplexer1
+        rg_sel <= rg_cnt[0];
+        rg_mux <= multiplexer1(rg_sel, rg_a, rg_b);
+        $write("\t multiplexer1: sel=%d, a=%d, b=%d, rg_mux=%d.", rg_sel, rg_a, rg_b, rg_mux);
+
+        // process for multiplexer5
+        rg_mux5  <= multiplexer5(rg_sel, rg_a5, rg_b5);
+        $display("\t multiplexer1: sel=%d, a=%b, b=%b, rg_mux=%b.", rg_sel, rg_a5, rg_b5, rg_mux5);
+
+        if (cnt < 6)
+            rg_cnt <= rg_cnt+1;
+        else
+            rg_state <= FINISH;
+    endrule
+
+    method Action start if(rg_state == IDLE);
+        rg_state <= PROCESS;
+    endmethod
+
+    method ActionValue#(int) finish if(rg_state==FINISH);
+        rg_state <= IDLE;
+        rg_cnt <= 0;
+        return 42;
+    endmethod
+endmodule
 
 endpackage
