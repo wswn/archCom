@@ -23,6 +23,7 @@ import SimBench :: *;
 
 // ================================================================
 // Macro definition
+`include <ConsoleColor.bsv>
 
 // ================================================================
 // Module definition
@@ -55,7 +56,10 @@ module mkTestbench (Empty);
 
     rule mtb_finish ;
         let x <- sim.finish; 
-        $display("\nTest suit finish: return %d",x);
+        $write("\n%s-------------------",`NONE); 
+        $write("\nTest suit finish.");
+        $write("\n%sTotal cnt: %2d",`NONE,x);
+        $write("\n");
         $finish;
     endrule
 endmodule

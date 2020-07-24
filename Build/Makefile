@@ -148,4 +148,4 @@ clean:
 .PHONY: full_clean
 full_clean:
 	rm -r -f  build_bsim  build_v  verilog_dir  *~
-	rm -f  *$(TOPMODULE)*  *.vcd
+	rm -f  *$(TOPMODULE)*  *.vcd *.log
