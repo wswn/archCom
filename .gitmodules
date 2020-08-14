@@ -3,4 +3,4 @@
 	url = https://github.com/csail-csg/recycle-bsv-lib.git
 [submodule "riscv"]
 	path = riscv
-	url = https://github.com/wswn/rvTCPine.git 
+	url = https://github.com/wswn/rvTCPine.git
