@@ -4,7 +4,7 @@
 cd Build
 
 # build & run
-# make all_bsim SIM=SIM_RISCV
+make all_bsim SIM=SIM_RISCV
 # make all_bsim SIM=SIM_MUX
 # make all_bsim SIM=SIM_ADDER
 # make all_bsim SIM=SIM_SHIFTER

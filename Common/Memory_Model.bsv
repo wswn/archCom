@@ -19,6 +19,7 @@ import FIFOF        :: *;
 import GetPut       :: *;
 import ClientServer :: *;
 import StmtFSM      :: *;
+import SpecialFIFOs :: *;
 
 // ================================================================
 // Project imports
@@ -49,8 +50,10 @@ module mkMemory_Model (Memory_IFC);
    Integer verbosity = 0;
 
    // Incoming memory requests, outgoing responses
+   // Vector #(N_Mem_Ports, FIFOF #(Req_T)) vf_reqs <- replicateM (mkBypassFIFOF);
+   Vector #(N_Mem_Ports, FIFOF #(Rsp_T)) vf_rsps <- replicateM (mkBypassFIFOF);
    Vector #(N_Mem_Ports, FIFOF #(Req_T)) vf_reqs <- replicateM (mkFIFOF);
-   Vector #(N_Mem_Ports, FIFOF #(Rsp_T)) vf_rsps <- replicateM (mkFIFOF);
+   // Vector #(N_Mem_Ports, FIFOF #(Rsp_T)) vf_rsps <- replicateM (mkFIFOF);
 
    // Memory parameters
    Reg #(Bool) rg_initialized <- mkReg (False);
