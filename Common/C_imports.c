@@ -43,7 +43,10 @@ static
 uint64_t max_text_addr = 0x0000000000000000llu;
 
 static
-const char objdump_filename[] = "objdump";
+const char objdump_filename[] = "../riscv/programs/build/instSort.bin";
+
+static
+uint64_t base_addr = 0x10000u;
 
 // ----------------------------------------------------------------
 
@@ -52,7 +55,7 @@ int bad_addr (uint64_t addr, uint64_t n_bytes)
 {
     int err = 0;
 
-    if ((addr + 4) > n_bytes) {
+    if ((addr + 4) > base_addr+n_bytes) {
 	fprintf (stderr,
 		 "ERROR: load_objdump: addr+4 %0" PRIx64 " > n_bytes %0" PRIx64 "\n",
 		 addr, n_bytes);
@@ -71,123 +74,163 @@ void load_objdump (uint64_t n_bytes, void *memp)
     FILE *fpi;
     char line [LINESIZE], *p;
     int line_num, n, n_initialized, is_text_start = 0;
-    uint64_t  addr_exp = 0, addr;
+    uint64_t  addr_exp = base_addr, addr;
     uint8_t  *p1 = memp;    // Byte pointer
     uint32_t *p4;           // Word pointer
     uint32_t  instr;
-
-    fpi = fopen (objdump_filename, "r");
-    if (fpi == NULL) {
-	fprintf (stderr, "ERROR: load_objdump: could not open objdump input file: %s\n",
-		 objdump_filename);
-	exit (1);
-    }
-
-    line_num  = 0;
-    n_initialized = 0;
-    while (1) {
-	p = fgets (line, LINESIZE, fpi);
-	if (p == NULL) break;
-	line_num++;
-
-	// Address lines, like:
-	//     0000000000010000 <_start>:
-	p = strstr (line, ">:");
+	uint32_t file_size = 0;
+	uint32_t count_tmp = 0;
+	
+	fpi = NULL;
+	p = strstr(objdump_filename, ".bin");
 	if (p != NULL) {
-	    sscanf (line, "%" SCNx64, & addr);
-	    if (addr < addr_exp) {
-		fprintf (stderr,
-			 "WARNING: load_objdump: expecting addr >= %0" PRIx64 ", but this line has addr %0" PRIx64 "\n",
-			 addr_exp, addr);
-	    }
-	    addr_exp = addr;
+		if (strlen(p) == 4) {
+    		fpi = fopen (objdump_filename, "rb");
 
-	    // printf ("@%0" PRIx64 "    // L%0d: %s", addr_exp, line_num, line);
+			if( fpi == NULL){
+				fprintf (stderr, "ERROR: load_objdump: could not open objdump input file: %s\n",
+					 objdump_filename);
+				exit (1);
+			}	
 
-	    if (bad_addr (addr_exp, n_bytes)) goto err_exit;
+			fseek(fpi, 0L, SEEK_END);
+			file_size = ftell(fpi);
 
-	    if (addr_exp < min_addr) min_addr = addr_exp;
-	    if (max_addr < addr_exp) max_addr = addr_exp;
+			printf ("INFO: load_objdump: file_size = %d \n", file_size);
 
-	    // Execution should begin at 'boot_main'
-	    p = strstr (line, "<boot_main>");
-	    if (p != NULL) {
-		printf ("INFO: load_objdump: 0x%0" PRIx64 "    L%0d: %s", addr_exp, line_num, line);
-		pc_boot_main = addr_exp;
-	    }
+			rewind(fpi);
+			if((count_tmp=fread(p1, sizeof(char), file_size, fpi)) != file_size)
+			{
+				printf("file read error, readout bytes = %d\n", count_tmp);
+				if( NULL != p1 )
+					free(p1);
+			}	
 
-	    continue;
+			printf ("INFO: load_objdump: load %s successfully! \n", objdump_filename);
+		}	
 	}
 
-	// Regular instruction lines, like:
-	//     10000:    f7bf0013    add    sp,sp,-64
-	n = sscanf (line, "%" SCNx64 ":%x", & addr, & instr);
-	if (n == 2) {
-	    // printf ("%08x    // L%0d: %s", instr, line_num, line);
-	    if (bad_addr (addr, n_bytes)) goto err_exit;
+	if( fpi == NULL) {	
+    	fpi = fopen (objdump_filename, "r");
+    	if (fpi == NULL) {
+			fprintf (stderr, "ERROR: load_objdump: could not open objdump input file: %s\n",
+				 objdump_filename);
+			exit (1);
+    	}
 
-	    if (addr_exp != addr) {
-		fprintf (stderr,
-			 "ERROR: load_objdump: expecting addr %0" PRIx64 ", but this line has addr %0" PRIx64 "\n",
-			 addr_exp, addr);
-		goto err_exit;
-	    }
+    	line_num  = 0;
+    	n_initialized = 0;
+    	while (1) {
+			p = fgets (line, LINESIZE, fpi);
+			if (p == NULL) break;
+			line_num++;
 
-	    if (addr < min_addr) min_addr = addr;
-	    if (max_addr < addr) max_addr = addr;
-	    if (is_text_start) {
-		min_text_addr = addr;
-		printf ("INFO: load_objdump: Section .text starts at 0x%0" PRIx64 "\n", addr);
-		is_text_start = 0;
-	    }
+			// Address lines, like:
+			//     0000000000010000 <_start>:
+			p = strstr (line, ">:");
+			if (p != NULL) {
+			    sscanf (line, "%" SCNx64, & addr);
+			    if (addr < addr_exp) {
+					fprintf (stderr,
+						 "WARNING: load_objdump: expecting addr >= %0" PRIx64 ", but this line has addr %0" PRIx64 "\n",
+						 addr_exp, addr);
+			    }
+			    addr_exp = addr;
 
-	    p4 = (uint32_t *) (p1 + addr);
-	    *p4 = instr;
-	    n_initialized++;
+			    // printf ("@%0" PRIx64 "    // L%0d: %s", addr_exp, line_num, line);
 
-	    addr_exp += 4;
-	    continue;
+			    if (bad_addr (addr_exp, n_bytes)) goto err_exit;
+
+			    if (addr_exp < min_addr) min_addr = addr_exp;
+			    if (max_addr < addr_exp) max_addr = addr_exp;
+
+			    // Execution should begin at 'boot_main'
+			    p = strstr (line, "<_start>");
+			    if (p != NULL) {
+					printf ("INFO: load_objdump: 0x%0" PRIx64 "    L%0d: %s", addr_exp, line_num, line);
+					pc_boot_main = addr_exp;
+			    }
+
+			    continue;
+			}
+
+			// Regular instruction lines, like:
+			//     10000:    f7bf0013    add    sp,sp,-64
+			n = sscanf (line, "%" SCNx64 ":%x", & addr, & instr);
+			if (n == 2) {
+			    // printf ("%08x    // L%0d: %s", instr, line_num, line);
+			    if (bad_addr (addr, n_bytes)) goto err_exit;
+
+			    if (addr_exp != addr) {
+				fprintf (stderr,
+					 "ERROR: load_objdump: expecting addr %0" PRIx64 ", but this line has addr %0" PRIx64 "\n",
+					 addr_exp, addr);
+				goto err_exit;
+			    }
+
+			    if (addr < min_addr) min_addr = addr;
+			    if (max_addr < addr) max_addr = addr;
+			    if (is_text_start) {
+				min_text_addr = addr;
+				printf ("INFO: load_objdump: Section .text starts at 0x%0" PRIx64 "\n", addr);
+				is_text_start = 0;
+			    }
+
+			    p4 = (uint32_t *) (p1 + addr);
+			    *p4 = instr;
+			    n_initialized++;
+
+			    addr_exp += 4;
+			    continue;
+			}
+
+			// Detect start of text section
+			p = strstr (line, "section .text:");
+			if (p != NULL) {
+			    is_text_start = 1;
+			    continue;
+			}
+
+			// Detect end of text section (start of .rodata)
+			p = strstr (line, "section .rodata:");
+			if (p != NULL) {
+			    printf ("INFO: load_objdump: Section .rodata starts at 0x%0" PRIx64 "\n", addr_exp);
+			    printf ("      Setting .text end to 0x%0" PRIx64 "\n", addr_exp - 4);
+			    max_text_addr = addr_exp - 4;
+			    continue;
+			}
+
+			// Detect start of other necessary sections: .data, .bss
+			p = strstr (line, "section .data:");
+			if (p != NULL) {
+			    printf ("INFO: load_objdump: Section .data found at 0x%0" PRIx64 "\n", addr_exp);
+			    continue;
+			}
+
+			p = strstr (line, "section .bss:");
+			if (p != NULL) {
+			    printf ("INFO: load_objdump: Section .bss found at 0x%0" PRIx64 "\n", addr_exp);
+			    continue;
+			}
+
+			// Detect start of section: init
+			p = strstr (line, "section .init:");
+			if (p != NULL) {
+			    printf ("INFO: load_objdump: Section .bss found at 0x%0" PRIx64 "\n", addr_exp);
+			    continue;
+			}
+
+			// Quit at any other section
+			p = strstr (line, "section");
+			if (p != NULL) {
+			    printf ("INFO: load_objdump: Quitting at: %s", line);
+			    break;
+			}
+
+			// Ignore all other lines
+			// printf ("// L%0d: %s", line_num, line);
+    	}
 	}
-
-	// Detect start of text section
-	p = strstr (line, "section .text:");
-	if (p != NULL) {
-	    is_text_start = 1;
-	    continue;
-	}
-
-	// Detect end of text section (start of .rodata)
-	p = strstr (line, "section .rodata:");
-	if (p != NULL) {
-	    printf ("INFO: load_objdump: Section .rodata starts at 0x%0" PRIx64 "\n", addr_exp);
-	    printf ("      Setting .text end to 0x%0" PRIx64 "\n", addr_exp - 4);
-	    max_text_addr = addr_exp - 4;
-	    continue;
-	}
-
-	// Detect start of other necessary sections: .data, .bss
-	p = strstr (line, "section .data:");
-	if (p != NULL) {
-	    printf ("INFO: load_objdump: Section .data found at 0x%0" PRIx64 "\n", addr_exp);
-	    continue;
-	}
-
-	p = strstr (line, "section .bss:");
-	if (p != NULL) {
-	    printf ("INFO: load_objdump: Section .bss found at 0x%0" PRIx64 "\n", addr_exp);
-	    continue;
-	}
-
-	// Quit at any other section
-	p = strstr (line, "section");
-	if (p != NULL) {
-	    printf ("INFO: load_objdump: Quitting at: %s", line);
-	    break;
-	}
-
-	// Ignore all other lines
-	// printf ("// L%0d: %s", line_num, line);
-    }
 
     printf ("INFO: load_objdump: %0d lines, %0d locations initialized\n", line_num, n_initialized);
     printf ("INFO: load_objdump: Min addr: 0x%0" PRIx64 "\n", min_addr);
@@ -319,14 +362,18 @@ void c_write (uint64_t addr, uint64_t x, uint64_t n_bytes)
 
 uint64_t cmd_bogus      = 0xfFFFfFFFfFFFfFFFllu;
 
-uint64_t cmd_continue   = 0;
-uint64_t cmd_dump       = 1;
-uint64_t cmd_quit       = 2;
-uint64_t cmd_reset      = 3;
-uint64_t cmd_step       = 4;
-uint64_t cmd_step_until = 5;
-uint64_t cmd_verbosity  = 6;    // arg: verbosity level
-uint64_t cmd_dump_mem   = 7;
+uint64_t cmd_continue   	= 0;
+uint64_t cmd_break   		= 1;
+uint64_t cmd_dump       	= 2;
+uint64_t cmd_quit       	= 3;
+uint64_t cmd_reset      	= 4;
+uint64_t cmd_step       	= 5;
+uint64_t cmd_step_until 	= 6;
+uint64_t cmd_stepi       	= 7;
+uint64_t cmd_stepi_until 	= 8;
+uint64_t cmd_verbosity  	= 9;    // arg: verbosity level
+uint64_t cmd_dump_mem   	= 10;
+uint64_t cmd_until   		= 11;
 
 static
 void print_console_menu (void)
@@ -334,13 +381,17 @@ void print_console_menu (void)
     printf ("Commands:\n");
     printf ("    h, H, ?           Print this help menu\n");
     printf ("    c                 continue\n");
+    printf ("    b                 break\n");
     printf ("    d                 dump architectural state\n");
     printf ("    q                 quit\n");
     printf ("    r                 reset\n");
     printf ("    s                 step\n");
     printf ("    S  n              step until n retired\n");
+    printf ("    si                step one instruction\n");
+    printf ("    Si  n             stepi until n retired\n");
     printf ("    v  n              set verbosity to n\n");
     printf ("    m  addr1 addr2    Display memory range as 32b words\n");
+    printf ("    u  addr      	   break when pc is equal to addr\n");
     printf ("\n");
     printf ("    Args can be written as decimal integers, or in hex if preceded with '0x'\n");
 }			 
@@ -365,25 +416,38 @@ void c_get_console_command (uint64_t *cmd_vec)
 	case '?':
 	case 'h':
 	case 'H': print_console_menu (); break;
-
+	
+	case 'b': cmd_vec [1] = cmd_break; break;
 	case 'c': cmd_vec [1] = cmd_continue; break;
 
-	case 'd': cmd_vec [1] = cmd_dump; break;
+	case 'd':
+	  status = sscanf (& (line [1]), "%i", & arg1);
+	  if (status == 1) {
+	      cmd_vec [0] = 2;
+	      cmd_vec [1] = cmd_dump;
+	      cmd_vec [2] = arg1;
+	  }
+	  break;
 
 	case 'q': cmd_vec [1] = cmd_quit; break;
 
 	case 'r': cmd_vec [1] = cmd_reset; break;
 
 	case '\n':
-	case 's': cmd_vec [1] = cmd_step; break;
+	case 's': cmd_vec [1] = line[1]=='i'? cmd_stepi : cmd_step; break;
 
 	case 'S':
-	  status = sscanf (& (line [1]), "%i", & arg1);
+	  if (line[1] == 'i')
+	  	status = sscanf (& (line [2]), "%i", & arg1);
+	  else
+	  	status = sscanf (& (line [1]), "%i", & arg1);
+
 	  if (status == 1) {
 	      cmd_vec [0] = 2;
-	      cmd_vec [1] = cmd_step_until;
+	      cmd_vec [1] = line[1]=='i'? cmd_stepi_until : cmd_step_until;
 	      cmd_vec [2] = ( (arg1 == 0) ? UINT64_MAX : arg1 );
 	  }
+
 	  break;
 
 	case 'v':
@@ -402,6 +466,15 @@ void c_get_console_command (uint64_t *cmd_vec)
 	      cmd_vec [1] = cmd_dump_mem;
 	      cmd_vec [2] = arg1;
 	      cmd_vec [3] = arg2;
+	  }
+	  break;
+
+	case 'u':
+	  status = sscanf (& (line [1]), "%i", & arg1);
+	  if (status == 1) {
+	      cmd_vec [0] = 2;
+	      cmd_vec [1] = cmd_until;
+	      cmd_vec [2] = arg1;
 	  }
 	  break;
 

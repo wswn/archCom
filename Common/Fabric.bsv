@@ -59,6 +59,13 @@ module mkFabric (Fabric_IFC);
    // Note: this implementation is essentially a simple crossbar switch,
    // which is ok for a small # of initiators and targets (say < 4).
    // For larger scales, replace it with a bus or a multi-stage switch
+    
+   // Now:
+   // rl_initiators_to_targets cannot fire before rl_targets_to_initiators
+   // rl_targets_to_initiators cannot fire before rl_initiators_to_targets
+   // TODO:
+   // CF: rl_initiators_to_targets & rl_targets_to_initiators
+   // CF: how to make rl_initiators_to_targets CF with rl_initiators_to_targets_1
 
    for (Integer j_initiator = 0; j_initiator < valueOf (Max_Initiators); j_initiator = j_initiator + 1)
       rule rl_initiators_to_targets;

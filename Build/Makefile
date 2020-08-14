@@ -18,6 +18,7 @@
 EG ?= multiplexer
 
 # Directory containing the Bluespec Training distribution directory
+# DISTRO ?= ..
 DISTRO ?= ..
 
 # Set this to the command that invokes your Verilog simulator
@@ -31,19 +32,23 @@ VSIM ?= iverilog
 # VSIM ?= ncverilog
 
 # Set this to select the simulation mode.
-SIM ?= SIM_MUX
+SIM ?= SIM_RISCV
 # SIM ?= SIM_ADDER
 # SIM ?= SIM_SHIFTER
 
 # ================================================================
 # You should not have to change anything below this line
+ifeq ($(SIM), SIM_RISCV)
+	TOPFILE   ?= $(DISTRO)/riscv/proc/Testbench.bsv
+else
+	TOPFILE   ?= $(DISTRO)/Testbench.bsv
+endif
 
-TOPFILE   ?= $(DISTRO)/Testbench.bsv
 TOPMODULE ?= mkTestbench
 
-BSC_COMP_FLAGS = -elab -keep-fires -aggressive-conditions -no-warn-action-shadowing -show-range-conflict -D $(SIM)
+BSC_COMP_FLAGS = -elab -keep-fires -aggressive-conditions -no-warn-action-shadowing -show-range-conflict -no-warn-method-urgency -D $(SIM)
 BSC_LINK_FLAGS = -keep-fires
-BSC_PATHS = -p $(DISTRO):%/Prelude:%/Libraries:$(DISTRO)/recycle-bsv-lib/build
+BSC_PATHS = -p $(DISTRO):%/Prelude:%/Libraries:$(DISTRO)/recycle-bsv-lib/build:$(DISTRO)/Common:$(DISTRO)/riscv/proc
 
 .PHONY: help
 help:

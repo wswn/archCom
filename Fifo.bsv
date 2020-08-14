@@ -20,10 +20,11 @@ package Fifo;
 
 // ================================================================
 // Modules Importation
-import SimBench :: * ;
-import Ehr :: * ;
-import LFSR :: * ;
-import Vector :: * ;
+import SimBench :: *;
+import Ehr      :: *;
+import LFSR     :: *;
+import GetPut   :: *;
+import Vector   :: *;
 
 // ================================================================
 // Macro definition
@@ -278,6 +279,9 @@ module mkFifoCF(Fifo#(n, t)) provisos (Bits#(t, sa));
         isEmpty[0] <= True;
         isFull[0] <= False;
     endmethod
+    // should have the schedule:
+    // schedule (notFull, enq) CF (notEmpty, first, deq);
+    // schedule (notFull, enq, notEmpty, first, deq) SB (clear);
 endmodule
 
 /**
@@ -381,5 +385,28 @@ module mkSimFifo (SimBench_IFC);
         return unpack(extend(cnt));
     endmethod
 endmodule
+
+// ================================================================
+// Define instances of ToGet and ToPut for the intefaces defined in this package
+instance ToGet #( Fifo#(n, t), t ) ;
+   function Get#(t) toGet (Fifo#(n, t) i);
+      return (interface Get;
+                 method ActionValue#(t) get();
+                    i.deq ;
+                    return i.first ;
+              endmethod
+         endinterface);
+   endfunction
+endinstance
+
+instance ToPut #( Fifo#(n, t), t ) ;
+   function Put#(t) toPut (Fifo#(n, t) i);
+      return (interface Put;
+                 method Action put(t x);
+                    i.enq(x) ;
+              endmethod
+         endinterface);
+   endfunction
+endinstance
 
 endpackage

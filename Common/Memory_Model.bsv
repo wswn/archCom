@@ -79,38 +79,38 @@ module mkMemory_Model (Memory_IFC);
       endactionvalue
    endfunction
 
-   // ----------------
-   // RULES
+    // ----------------
+    // RULES
 
-   for (Integer j = 0; j < valueOf (N_Mem_Ports); j = j + 1)
-      rule rl_handle_reqs (rg_initialized);
-	 let req = vf_reqs[j].first; vf_reqs[j].deq;
-	 let addr_ok <- fn_addr_ok (req);
-	 let offset = req.addr - rg_base;
-	 Bit #(64) p = rg_p + extend (offset);
+    for (Integer j = 0; j < valueOf (N_Mem_Ports); j = j + 1)
+        rule rl_handle_reqs (rg_initialized);
+            let req = vf_reqs[j].first; vf_reqs[j].deq;
+            let addr_ok <- fn_addr_ok (req);
+            let offset = req.addr - rg_base;
+            Bit #(64) p = rg_p + extend (offset);
 
-	 Rsp_T rsp;
-	 if (req.command == UNKNOWN)
-	    rsp = Rsp {command:req.command, data:extend (req.addr), status: SLVERR, tid:req.tid};
-	 else if (addr_ok && (req.command == READ)) begin
-	    Bit #(64) x <- c_read (p, extend (reqSz_bytes (req.b_size)));
-	    rsp = Rsp {command:READ, data:x, status:OKAY, tid:req.tid};
-	 end
-	 else if (addr_ok && (req.command == WRITE)) begin
-	    c_write (p, extend (req.data), extend (reqSz_bytes (req.b_size)));
-	    rsp = Rsp {command:WRITE, data:0, status:OKAY, tid:req.tid};
-	 end
-	 else
-	    rsp = Rsp {command:req.command, data:extend (req.addr), status: DECERR, tid:req.tid};
+            Rsp_T rsp;
+            if (req.command == UNKNOWN)
+                rsp = Rsp {command:req.command, data:req.addr, status: SLVERR, tid:req.tid};
+            else if (addr_ok && (req.command == READ)) begin
+                Bit #(64) x <- c_read (p, extend (reqSz_bytes (req.b_size)));
+                rsp = Rsp {command:READ, data:x, status:OKAY, tid:req.tid};
+            end
+            else if (addr_ok && (req.command == WRITE)) begin
+                c_write (p, req.data, extend (reqSz_bytes (req.b_size)));
+                rsp = Rsp {command:WRITE, data:0, status:OKAY, tid:req.tid};
+            end
+            else
+                rsp = Rsp {command:req.command, data:req.addr, status: DECERR, tid:req.tid};
 
-	 vf_rsps[j].enq (rsp);
+            vf_rsps[j].enq (rsp);
 
-	 if (verbosity > 0) begin
-	    $display ("%0d: Memory_model, port %0d:", cur_cycle, j);
-	    $write   ("    "); display_Req (req); $display ();
-	    $write   ("    "); display_Rsp (rsp); $display ();
-	 end
-      endrule
+            if (verbosity > 0) begin
+                $display ("%0d: Memory_model, port %0d:", cur_cycle, j);
+                $write   ("    "); display_Req (req); $display ();
+                $write   ("    "); display_Rsp (rsp); $display ();
+            end
+        endrule
 
    // ----------------
    // INTERFACE
