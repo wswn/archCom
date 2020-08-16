@@ -42,6 +42,16 @@ interface Fifo#(numeric type n, type t);
   method Action clear;
 endinterface
 
+interface SFifo#(numeric type n, type t);
+  method Bool notFull;
+  method Action enq(t x);
+  method Bool notEmpty;
+  method Action deq;
+  method t first;
+  method Action clear;
+  method Bool search(t x);
+endinterface
+
 // ================================================================
 // Function definition
 
@@ -282,6 +292,79 @@ module mkFifoCF(Fifo#(n, t)) provisos (Bits#(t, sa));
     // should have the schedule:
     // schedule (notFull, enq) CF (notEmpty, first, deq);
     // schedule (notFull, enq, notEmpty, first, deq) SB (clear);
+endmodule
+
+module mkSFifo(SFifo#(n, t)) provisos (Bits#(t, sa), Eq#(t));
+    // define fifo's data region
+    Vector#(n, Reg#(t)) data <- replicateM(mkReg(?));
+    // define pointers of enq and deq
+    Ehr#(3, Bit#(TLog#(n))) enqP <- mkEhr(0);
+    Ehr#(3, Bit#(TLog#(n))) deqP <- mkEhr(0);
+    // define full and emtpy flags
+    Ehr#(3, Bool) isEmpty <- mkEhr(True);
+    Ehr#(3, Bool) isFull <- mkEhr(False);
+    // define Ehr for enq and deq
+    Ehr#(3, Maybe#(t)) enqMethod <- mkEhr(tagged Invalid);
+    Ehr#(3, Bool) deqMethod <- mkEhr(False);
+   
+    (* no_implicit_conditions, fire_when_enabled *) 
+    rule canonicalize;
+        t enqx = fromMaybe (?, enqMethod[2]);
+        if(isValid(enqMethod[2])) begin
+            Integer order = 2;
+            data[enqP[order]] <= enqx;
+            enqP[order] <= roundUp(enqP[order],valueOf(n));
+            isFull[order] <= roundUp(enqP[order],valueOf(n)) == deqP[order]? True:False;
+            isEmpty[order] <= False;
+            enqMethod[2] <= tagged Invalid;
+        end
+        if(deqMethod[2]==True) begin
+            Integer order = 1;
+            deqP[order] <= roundUp(deqP[order], valueOf(n)); 
+            isEmpty[order] <= roundUp(deqP[order],valueOf(n)) == enqP[order]? True:False;
+            isFull[order] <= False;
+            deqMethod[2] <= False;
+        end
+    endrule
+
+    method Bool notFull;
+        return !isFull[0];
+    endmethod
+    method Action enq(t x) if(!isFull[0]);
+        enqMethod[0] <= tagged Valid x;
+    endmethod
+    method Bool notEmpty;
+        return !isEmpty[0];
+    endmethod
+    method Action deq if(!isEmpty[0]);
+        deqMethod[0] <= True;
+    endmethod
+    method t first if(!isEmpty[0]);
+        return data[deqP[0]];
+    endmethod
+    method Action clear;
+        enqMethod[1] <= tagged Invalid;
+        deqMethod[1] <= False;
+        enqP[0] <= 0;
+        deqP[0] <= 0;
+        isEmpty[0] <= True;
+        isFull[0] <= False;
+    endmethod
+    // should have the schedule:
+    // schedule (notFull, enq) CF (notEmpty, first, deq);
+    // schedule (notFull, enq, notEmpty, first, deq) SB (clear);
+
+    method Bool search(t x);
+        Bool found = False;
+        for(Integer i = 0; i < valueOf(n); i = i+1) begin
+            Bit#(TLog#(n)) ib = fromInteger(i);
+            Bool validEntry = isFull[0]
+                              || (enqP[0]>deqP[0] && ib>=deqP[0] && ib<enqP[0])
+                              || (enqP[0]<deqP[0] && (ib>=deqP[0] || ib<enqP[0]));
+            if(validEntry && (data[ib] == x)) found = True;
+        end
+        return found;
+    endmethod
 endmodule
 
 /**
